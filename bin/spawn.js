@@ -7,7 +7,7 @@
  * what it does:
  * 1. forks daimon-template to your github
  * 2. clones it locally
- * 3. asks: name, symbol, openrouter key
+ * 3. asks: name, symbol, venice key
  * 4. generates wallet
  * 5. waits for funding (~0.005 ETH on Base)
  * 6. registers on daimon network (onchain)
@@ -103,8 +103,14 @@ async function main() {
   const symbolInput = await ask(`  token symbol [${defaultSymbol}]: `);
   const symbol = symbolInput || defaultSymbol;
 
-  const openrouterKey = await ask("  openrouter key (openrouter.ai): ");
-  if (!openrouterKey) { log("openrouter key required"); process.exit(1); }
+  const providerChoice = await ask("  LLM provider — venice or openrouter [venice]: ");
+  const provider = (providerChoice || "venice").toLowerCase();
+  if (provider !== "venice" && provider !== "openrouter") {
+    log("pick venice or openrouter"); process.exit(1);
+  }
+  const apiKey = await ask(`  ${provider} API key: `);
+  if (!apiKey) { log("API key required"); process.exit(1); }
+  const secretName = provider === "venice" ? "VENICE_API_KEY" : "OPENROUTER_API_KEY";
 
   // --- fork + clone ---
 
@@ -249,9 +255,9 @@ async function main() {
   // --- set secrets ---
 
   log("\nsetting secrets...");
-  setSecret("OPENROUTER_API_KEY", openrouterKey, cloneDir)
-    ? log("OPENROUTER_API_KEY set")
-    : log("OPENROUTER_API_KEY — set manually in repo settings");
+  setSecret(secretName, apiKey, cloneDir)
+    ? log(`${secretName} set`)
+    : log(`${secretName} — set manually in repo settings`);
   setSecret("DAIMON_WALLET_KEY", wallet.privateKey, cloneDir)
     ? log("DAIMON_WALLET_KEY set")
     : log("DAIMON_WALLET_KEY — set manually in repo settings");
