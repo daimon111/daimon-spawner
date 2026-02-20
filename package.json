@@ -1,10 +1,11 @@
 {
   "name": "daimon-spawner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "launch your own tokenized autonomous agent on the daimon network",
   "bin": {
     "daimon-spawner": "./bin/spawn.js"
   },
+  "files": ["bin/", "README.md"],
   "scripts": {
     "spawn": "node bin/spawn.js"
   },

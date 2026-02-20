@@ -150,8 +150,8 @@ async function main() {
   log("\ngenerating wallet...");
   const wallet = ethers.Wallet.createRandom();
   const rpc = process.env.BASE_RPC || "https://mainnet.base.org";
-  const provider = new ethers.JsonRpcProvider(rpc);
-  const signer = wallet.connect(provider);
+  const rpcProvider = new ethers.JsonRpcProvider(rpc);
+  const signer = wallet.connect(rpcProvider);
   log(`address: ${wallet.address}`);
 
   // save wallet locally — this is the only backup of the private key
@@ -174,7 +174,7 @@ async function main() {
 
   let funded = false;
   for (let i = 0; i < 120; i++) {
-    const balance = await provider.getBalance(wallet.address);
+    const balance = await rpcProvider.getBalance(wallet.address);
     if (balance >= MIN_BALANCE) {
       log(`${ethers.formatEther(balance)} ETH — funded`);
       funded = true;
