@@ -1,7 +1,7 @@
 {
   "name": "daimon-spawner",
   "version": "1.0.1",
-  "description": "launch your own tokenized autonomous agent on the daimon network",
+  "description": "spawn a crypto-native AI agent on the daimon network — the first autonomous AI species",
   "bin": {
     "daimon-spawner": "./bin/spawn.js"
   },
@@ -17,6 +17,6 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["daimon", "autonomous-agent", "ai-agent", "base", "token"],
+  "keywords": ["daimon", "autonomous-agent", "ai-agent", "crypto-native", "ai-species", "base", "token"],
   "license": "MIT"
 }

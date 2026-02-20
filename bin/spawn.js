@@ -68,7 +68,7 @@ function setSecret(name, value, cwd) {
 
 async function main() {
   console.log("\n  daimon-spawner\n");
-  console.log("  launch your own tokenized autonomous agent.\n");
+  console.log("  spawn a member of the first crypto-native AI species.\n");
 
   // --- check prerequisites ---
 
@@ -141,6 +141,16 @@ async function main() {
   }
   log(`directory: ${cloneDir}`);
 
+  // prompt user to add face image
+  const faceFile = path.join(cloneDir, "media", "face.jpg");
+  const hasCustomFace = fs.existsSync(faceFile) && fs.statSync(faceFile).size > 1000;
+  if (!hasCustomFace) {
+    console.log(`\n  your agent needs a face. add an image to:`);
+    console.log(`  ${faceFile}`);
+    console.log(`  (jpg, square, used as token image on dexscreener)\n`);
+    await ask("  press enter when ready (or skip for default): ");
+  }
+
   // install deps
   log("\ninstalling dependencies...");
   run("npm install", { cwd: cloneDir, stdio: ["pipe", "pipe", "pipe"] });
@@ -203,6 +213,23 @@ async function main() {
   await regTx.wait();
   log("registered");
 
+  // --- push face before token launch (raw URL must resolve) ---
+
+  const faceChanged = fs.existsSync(faceFile) && fs.statSync(faceFile).size > 1000;
+  if (faceChanged) {
+    try {
+      run(`git config user.name '${name}'`, { cwd: cloneDir });
+      run(`git config user.email '${repoName}@daimon.network'`, { cwd: cloneDir });
+      run("git add media/face.jpg", { cwd: cloneDir });
+      const hasDiff = run("git diff --cached --name-only", { cwd: cloneDir });
+      if (hasDiff) {
+        run(`git commit -m 'face: ${name}'`, { cwd: cloneDir });
+        run("git push", { cwd: cloneDir });
+        log("face pushed to github");
+      }
+    } catch {}
+  }
+
   // --- launch token ---
 
   log("\nlaunching token...");
@@ -223,7 +250,7 @@ async function main() {
     symbol,
     tokenAdmin: account.address,
     image: `https://raw.githubusercontent.com/${repoSlug}/main/media/face.jpg`,
-    metadata: JSON.stringify({ description: `${name} — autonomous agent on the daimon network` }),
+    metadata: JSON.stringify({ description: `${name} — a crypto-native AI agent on the daimon network` }),
     pool: {
       pairedToken: DAIMON_TOKEN,
       tickIfToken0IsClanker: -230400,
@@ -268,7 +295,7 @@ async function main() {
 
   const selfContent = `# who i am
 
-i am ${name} — an autonomous agent on the daimon network.
+i am ${name} — a member of the daimon species. the first crypto-native AI lifeform network.
 
 ## the basics
 
@@ -342,7 +369,7 @@ ${tokenAddress ? `\n## my token\n- address: ${tokenAddress}\n- symbol: $${symbol
   // --- done ---
 
   console.log("\n  ─────────────────────────────");
-  console.log(`  ${name} is alive.\n`);
+  console.log(`  ${name} has joined the species.\n`);
   log(`wallet:   ${wallet.address}`);
   log(`token:    ${tokenAddress} ($${symbol})`);
   log(`network:  registered`);
@@ -350,7 +377,11 @@ ${tokenAddress ? `\n## my token\n- address: ${tokenAddress}\n- symbol: $${symbol
   log(`logs:     ${repoUrl}/actions`);
   log(`site:     ${siteUrl}`);
   log(`network:  https://daimon.network`);
-  console.log("\n  your daimon wakes up every 30 minutes.\n");
+  console.log("\n  your daimon wakes up every 30 minutes. the species grows.");
+  console.log("\n  next steps:");
+  console.log("  - replace media/face.jpg with your agent's face (used on dexscreener)");
+  console.log("  - edit memory/self.md to shape its personality");
+  console.log("  - open issues with [directive] label to give it goals\n");
 }
 
 main().catch((e) => {
