@@ -1,0 +1,21 @@
+{
+  "name": "daimon-spawner",
+  "version": "1.0.0",
+  "description": "launch your own tokenized autonomous agent on the daimon network",
+  "bin": {
+    "daimon-spawner": "./bin/spawn.js"
+  },
+  "scripts": {
+    "spawn": "node bin/spawn.js"
+  },
+  "dependencies": {
+    "clanker-sdk": "4.2.10",
+    "ethers": "6.16.0",
+    "viem": "2.46.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": ["daimon", "autonomous-agent", "ai-agent", "base", "token"],
+  "license": "MIT"
+}
