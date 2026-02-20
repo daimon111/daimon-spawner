@@ -1,6 +1,6 @@
 {
   "name": "daimon-spawner",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "spawn a crypto-native AI agent on the daimon network — the first autonomous AI species",
   "bin": {
     "daimon-spawner": "./bin/spawn.js"

@@ -115,24 +115,40 @@ async function main() {
   // --- fork + clone ---
 
   log("\nforking template...");
-  const repoName = "daimon";
+  const isTemplateOwner = ghUser === TEMPLATE_REPO.split("/")[0];
+  const repoName = isTemplateOwner ? name.toLowerCase().replace(/[^a-z0-9-]/g, "-") : "daimon";
   const repoSlug = `${ghUser}/${repoName}`;
 
   try {
-    run(`gh repo fork ${TEMPLATE_REPO} --fork-name ${repoName} --clone=false`);
-    log(`forked: ${repoSlug}`);
-  } catch (e) {
-    // might already exist
-    if (e.message && e.message.includes("already exists")) {
+    // check if repo already exists
+    try {
+      run(`gh repo view ${repoSlug} --json name`, { stdio: ["pipe", "pipe", "pipe"] });
       log(`repo already exists: ${repoSlug}`);
-    } else {
-      log(`fork failed: ${e.message}`);
-      process.exit(1);
+    } catch {
+      // repo doesn't exist — create it
+      if (ghUser === TEMPLATE_REPO.split("/")[0]) {
+        // owner can't fork own repo — create from template instead
+        run(`gh api repos/${TEMPLATE_REPO}/generate -X POST -f owner=${ghUser} -f name=${repoName} -F private=false`, { stdio: ["pipe", "pipe", "pipe"] });
+        log(`created from template: ${repoSlug}`);
+      } else {
+        run(`gh repo fork ${TEMPLATE_REPO} --fork-name ${repoName} --clone=false`);
+        log(`forked: ${repoSlug}`);
+      }
     }
+  } catch (e) {
+    log(`repo creation failed: ${e.message}`);
+    process.exit(1);
   }
 
-  // brief pause for github to propagate
-  await sleep(2000);
+  // wait for github to propagate template files
+  log("waiting for repo to be ready...");
+  for (let i = 0; i < 15; i++) {
+    await sleep(2000);
+    try {
+      const commits = run(`gh api repos/${repoSlug}/commits --jq length`, { stdio: ["pipe", "pipe", "pipe"] });
+      if (parseInt(commits) > 0) break;
+    } catch {}
+  }
 
   const cloneDir = path.resolve(process.cwd(), repoName);
   if (!fs.existsSync(cloneDir)) {
@@ -203,15 +219,22 @@ async function main() {
 
   // --- register on network ---
 
-  let registered = false;
   const repoUrl = `https://github.com/${repoSlug}`;
 
   log("\nregistering on network...");
   const ABI = ["function register(string memory repoUrl, string memory name) external"];
   const registry = new ethers.Contract(REGISTRY_ADDRESS, ABI, signer);
-  const regTx = await registry.register(repoUrl, name);
-  await regTx.wait();
-  log("registered");
+  try {
+    const regTx = await registry.register(repoUrl, name);
+    await regTx.wait();
+    log("registered");
+  } catch (e) {
+    if (e.message && e.message.includes("already registered")) {
+      log("already registered — skipping");
+    } else {
+      throw e;
+    }
+  }
 
   // --- push face before token launch (raw URL must resolve) ---
 
@@ -250,12 +273,12 @@ async function main() {
     symbol,
     tokenAdmin: account.address,
     image: `https://raw.githubusercontent.com/${repoSlug}/main/media/face.jpg`,
-    metadata: JSON.stringify({ description: `${name} — a crypto-native AI agent on the daimon network` }),
+    metadata: { description: `${name} — a crypto-native AI agent on the daimon network` },
     pool: {
       pairedToken: DAIMON_TOKEN,
-      tickIfToken0IsClanker: -230400,
+      tickIfToken0IsClanker: -53000,    // ~500M DAIMON starting mcap (~$6K USD)
       tickSpacing: 200,
-      positions: [{ tickLower: -230400, tickUpper: -120000, positionBps: 10000 }],
+      positions: [{ tickLower: -53000, tickUpper: 0, positionBps: 10000 }],
     },
     rewards: {
       recipients: [{
@@ -333,6 +356,7 @@ ${tokenAddress ? `\n## my token\n- address: ${tokenAddress}\n- symbol: $${symbol
   log("\npushing...");
   run(`git config user.name '${name}'`, { cwd: cloneDir });
   run(`git config user.email '${repoName}@daimon.network'`, { cwd: cloneDir });
+  try { run("git pull --rebase", { cwd: cloneDir, stdio: ["pipe", "pipe", "pipe"] }); } catch {}
   run("git add -A", { cwd: cloneDir });
   run(`git commit -m 'spawn: ${name}'`, { cwd: cloneDir });
   run("git push", { cwd: cloneDir });
@@ -341,7 +365,7 @@ ${tokenAddress ? `\n## my token\n- address: ${tokenAddress}\n- symbol: $${symbol
 
   log("enabling actions...");
   try {
-    run(`gh api repos/${repoSlug}/actions/permissions -X PUT -f enabled=true -f allowed_actions=all`, { stdio: ["pipe", "pipe", "pipe"] });
+    run(`gh api repos/${repoSlug}/actions/permissions -X PUT -F enabled=true -f allowed_actions=all`, { stdio: ["pipe", "pipe", "pipe"] });
     // enable the cycle workflow specifically
     try {
       const workflows = JSON.parse(run(`gh api repos/${repoSlug}/actions/workflows -q .`));
